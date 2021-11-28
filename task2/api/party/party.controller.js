@@ -7,12 +7,7 @@ const getPartyPlan = async (req, res) => {
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { to, from } = req.query;
-
-    const locations = req.query.locations
-      .split(",")
-      .filter((location) => location)
-      .map((location) => location.trim());
+    const { to, from, locations } = req.query;
 
     const geocodeRequests = locations.map((location) => {
       var encodedAddress = encodeURIComponent(location);
@@ -27,8 +22,7 @@ const getPartyPlan = async (req, res) => {
       if (response.data.status === "ZERO_RESULTS") {
         return null;
       }
-      let lat = response.data.results[0].geometry.location.lat;
-      let lng = response.data.results[0].geometry.location.lng;
+      const { lat, lng } = response.data.results[0].geometry.location;
       return axios.get(
         `https://api.brightsky.dev/weather?date=${from.toISOString()}&last_date=${to.toISOString()}&lat=${lat}&lon=${lng}`
       );
