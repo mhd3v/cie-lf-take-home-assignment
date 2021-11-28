@@ -9,8 +9,11 @@ router.get(
   [
     query(
       "locations",
-      "Comma separted location values are required. For example: Treptower Park, Berlin"
-    ).notEmpty().isArray(),
+      "Location value(s) are required. For example: Treptower Park, Berlin"
+    )
+      .notEmpty()
+      .toArray()
+      .custom((value) => value.every((value) => value)),
     query("from", "From date must be a valid ISO 8601 date")
       .isISO8601()
       .toDate(),
