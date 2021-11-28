@@ -1,3 +1,4 @@
+const axios = require("axios");
 const { validationResult } = require("express-validator");
 
 const getPartyPlan = async (req, res) => {
@@ -27,8 +28,73 @@ const getPartyPlan = async (req, res) => {
         `https://api.brightsky.dev/weather?date=${from.toISOString()}&last_date=${to.toISOString()}&lat=${lat}&lon=${lng}`
       );
     });
+
+    const predictionResponses = await (
+      await Promise.allSettled(predictionsRequests)
+    ).map((predictionResponse) =>
+      predictionResponse.value ? predictionResponse.value.data.weather : null
+    );
+
+    // Filtering out predictions which don't match the temperature and wind speed criteria
+    const filteredPredictionResponses = predictionResponses.map(
+      (locationPredictions) => {
+        return locationPredictions
+          ? locationPredictions.filter(
+              (prediction) =>
+                prediction.temperature > 20 &&
+                prediction.temperature < 30 &&
+                prediction.wind_speed < 30
+            )
+          : null;
+      }
+    );
+
+    // Get optimal prediction against each location
+    const optimalPredictionsForLocations = filteredPredictionResponses.map(
+      (locationPredictions) => {
+        if (locationPredictions?.length) {
+          let optimalPrediction = locationPredictions[0];
+          locationPredictions.forEach((prediction) => {
+            if (
+              prediction.sunshine >= optimalPrediction.sunshine &&
+              prediction.precipitation <= optimalPrediction.precipitation
+            ) {
+              optimalPrediction = prediction;
+            }
+          });
+          return optimalPrediction;
+        }
+        return null;
+      }
+    );
+
+    let optimalPrediction = null;
+    optimalPredictionsForLocations.forEach((prediction, i) => {
+      // Check if prediction object is valid (don't account for invalid locations)
+      if (prediction) {
+        const { timestamp, precipitation, sunshine } = prediction;
+        const currentPrediction = {
+          date: timestamp,
+          location: locations[i],
+          sunshine,
+          precipitation,
+        };
+
+        // Optimal prediction object is null
+        if (!optimalPrediction) {
+          optimalPrediction = currentPrediction;
+        } else if (
+          sunshine >= optimalPrediction.sunshine &&
+          precipitation <= optimalPrediction.precipitation
+        ) {
+          optimalPrediction = currentPrediction;
+        }
+      }
+    });
+
     res.json({
-      msg: "Dummy party plan!",
+      date: optimalPrediction?.date || null,
+      location: optimalPrediction?.location || null,
     });
   } catch (error) {
     console.log("An error occurred while getting the party plan", error);
