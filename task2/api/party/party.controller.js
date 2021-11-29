@@ -11,17 +11,21 @@ const getPartyPlan = async (req, res) => {
     const { to, from, locations } = req.query;
 
     const geocodeRequests = locations.map((location) => {
-      var encodedAddress = encodeURIComponent(location);
+      const encodedAddress = encodeURIComponent(location);
       return axios.get(
         `https://maps.googleapis.com/maps/api/geocode/json?address=${encodedAddress}&key=${process.env.API_KEY}`
       );
     });
 
-    const responses = await Promise.all(geocodeRequests);
-    const predictionsRequests = responses.map((response) => {
+    const geocodeResponses = await Promise.all(geocodeRequests);
+    const predictionsRequests = geocodeResponses.map((response) => {
       // When location not found
       if (response.data.status === "ZERO_RESULTS") {
         return null;
+      }
+      // Cater for invalid API key or limit breaches
+      else if (response.data.status === 'REQUEST_DENIED') {
+        throw new Error(response.data.error_message);
       }
       const { lat, lng } = response.data.results[0].geometry.location;
       return axios.get(
@@ -77,13 +81,15 @@ const getPartyPlan = async (req, res) => {
           date: timestamp,
           location: locations[i],
           sunshine,
-          precipitation,
+          precipitation
         };
 
-        // Optimal prediction object is null
+        // Optimal prediction object is null, so select the current prediction as optimal
         if (!optimalPrediction) {
           optimalPrediction = currentPrediction;
-        } else if (
+        }
+        // Check if the current prediction is more optimal than the current optimal prediction
+        else if (
           sunshine >= optimalPrediction.sunshine &&
           precipitation <= optimalPrediction.precipitation
         ) {

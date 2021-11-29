@@ -15,5 +15,5 @@ To start the API server, run the following commands in a terminal window from th
 
  1. NPM
  2. Node.JS
- 3. Google's Geocoding API key (**important**): obtain this key from [here](https://developers.google.com/maps/documentation/geocoding/get-api-key). Once you have the API key, create a .env file under the task2 folder with the following content:
+ 3. Google's Geocoding API key (**important**): obtain this key from [here](https://developers.google.com/maps/documentation/geocoding/get-api-key). Once you have the API key, create a .env file inside the task2 folder with the following content:
  `API_KEY=<YOUR_KEY_HERE>`. Please note that the `GET /party_plan` route cannot be invoked unless the API key is set.
