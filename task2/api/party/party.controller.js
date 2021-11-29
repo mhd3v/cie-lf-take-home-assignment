@@ -24,7 +24,7 @@ const getPartyPlan = async (req, res) => {
         return null;
       }
       // Cater for invalid API key or limit breaches
-      else if (response.data.status === 'REQUEST_DENIED') {
+      else if (response.data.status === "REQUEST_DENIED") {
         throw new Error(response.data.error_message);
       }
       const { lat, lng } = response.data.results[0].geometry.location;
@@ -39,62 +39,39 @@ const getPartyPlan = async (req, res) => {
       predictionResponse.value ? predictionResponse.value.data.weather : null
     );
 
-    // Filtering out predictions which don't match the temperature and wind speed criteria
-    const filteredPredictionResponses = predictionResponses.map(
-      (locationPredictions) => {
-        return locationPredictions
-          ? locationPredictions.filter(
-              (prediction) =>
-                prediction.temperature > 20 &&
-                prediction.temperature < 30 &&
-                prediction.wind_speed < 30
-            )
-          : null;
-      }
-    );
-
-    // Get optimal prediction against each location
-    const optimalPredictionsForLocations = filteredPredictionResponses.map(
-      (locationPredictions) => {
-        if (locationPredictions?.length) {
-          let optimalPrediction = locationPredictions[0];
-          locationPredictions.forEach((prediction) => {
-            if (
-              prediction.sunshine >= optimalPrediction.sunshine &&
-              prediction.precipitation <= optimalPrediction.precipitation
-            ) {
-              optimalPrediction = prediction;
-            }
-          });
-          return optimalPrediction;
-        }
-        return null;
-      }
-    );
-
+    // Get optimal prediction
     let optimalPrediction = null;
-    optimalPredictionsForLocations.forEach((prediction, i) => {
-      // Check if prediction object is valid (don't account for invalid locations)
-      if (prediction) {
-        const { timestamp, precipitation, sunshine } = prediction;
-        const currentPrediction = {
-          date: timestamp,
-          location: locations[i],
-          sunshine,
-          precipitation
-        };
+    predictionResponses.forEach((locationPredictions, i) => {
+      if (locationPredictions?.length) {
+        locationPredictions.forEach((prediction) => {
+          // Filtering out predictions which don't match the temperature and wind speed criteria
+          if (
+            prediction &&
+            prediction.temperature > 20 &&
+            prediction.temperature < 30 &&
+            prediction.wind_speed < 30
+          ) {
+            const { timestamp, precipitation, sunshine } = prediction;
+            const currentPrediction = {
+              date: timestamp,
+              location: locations[i],
+              sunshine,
+              precipitation,
+            };
 
-        // Optimal prediction object is null, so select the current prediction as optimal
-        if (!optimalPrediction) {
-          optimalPrediction = currentPrediction;
-        }
-        // Check if the current prediction is more optimal than the current optimal prediction
-        else if (
-          sunshine >= optimalPrediction.sunshine &&
-          precipitation <= optimalPrediction.precipitation
-        ) {
-          optimalPrediction = currentPrediction;
-        }
+            // Optimal prediction object is null, so select the current prediction as optimal
+            if (!optimalPrediction) {
+              optimalPrediction = currentPrediction;
+            }
+            // Check if the current prediction is more optimal than the current optimal prediction
+            else if (
+              sunshine >= optimalPrediction.sunshine &&
+              precipitation <= optimalPrediction.precipitation
+            ) {
+              optimalPrediction = currentPrediction;
+            }
+          }
+        });
       }
     });
 
